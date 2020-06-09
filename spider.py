@@ -1,9 +1,10 @@
 import sys
 import time
 import re
+import os
+import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.keys import Keys
 
 
 class Csdn():
@@ -28,7 +29,6 @@ class Csdn():
     def run(self):
         self.url += self.searchStr
         self.driver.get(self.url)
-
         searchList = self.driver.find_elements_by_xpath("//div[@class='search-list-con']/dl")
         for searchItem in searchList:
             try:
@@ -47,6 +47,58 @@ class Csdn():
         self.desplayResult()
 
 
+class Mzitu():
+    def __init__(self, driver, pages):
+        # get User-Agent from chrome://version/
+        self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36'}
+        self.url = "http://www.mzitu.com/zipai" # http://www.zbjuran.com'
+        self.pages = pages
+        self.driver = driver
+        self.savedDir = "images"
+        self.makeDir(self.savedDir)
+        os.chdir(self.savedDir)
+
+    def makeDir(self, path):
+        isExist = os.path.exists(path)
+        if not isExist:
+            os.makedirs(path)
+
+    def saveImage(self, imgHref, imgName):
+        img = requests.get(imgHref, headers=self.headers)
+        # self.driver.get(imgHref)
+        f = open(imgName, 'wb')
+        f.write(img.content)
+        f.close()
+        print('save image %s' %imgName)
+
+    def saveImages(self, imgHrefs):
+        for imgHref in imgHrefs:
+            imgName = imgHref[imgHref.rfind('/')+1:] # *.jpg
+            if not os.path.exists(imgName):
+                self.saveImage(imgHref, imgName)
+
+    def run(self):
+        self.driver.get(self.url)
+        latestPageElem = self.driver.find_element_by_xpath("//div[@class='pagenavi-cm']/span[@aria-current='page']")
+        latestPageNum = int(latestPageElem.text) # 453
+
+        for page in range(pages):
+            dirName = str(latestPageNum - page)
+            self.makeDir(dirName)
+            os.chdir(dirName)
+
+            imgHrefs = []
+            urlPage = self.url + '/comment-page-' + dirName + '/#comments'
+            self.driver.get(urlPage)
+            imgElemList = self.driver.find_elements_by_xpath("//div[@class='comment-body']/p/img")
+            for imgElem in imgElemList:
+                imgHref = imgElem.get_attribute('data-original')
+                imgHrefs.append(imgHref)
+
+            self.saveImages(imgHrefs)
+            os.chdir("..")
+
+
 def initChromeDriver():
     options = Options()
     options.add_argument('--headless')
@@ -60,9 +112,17 @@ def initChromeDriver():
 if __name__ == '__main__':
     driver = initChromeDriver()
 
+    '''
+    # python spider.py "redis" 5
     searchStr = sys.argv[1]
     displayCount = int(sys.argv[2])
     csdn = Csdn(driver, searchStr, displayCount)
     csdn.run()
+    '''
+
+    # python spider.py 2
+    pages = int(sys.argv[1])
+    mzitu = Mzitu(driver, pages)
+    mzitu.run()
 
     driver.quit()
