@@ -8,9 +8,8 @@ class Mzitu():
         self.driver = driver
         # get User-Agent info from chrome://version/
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36'}
-        self.urlHome = "http://www.mzitu.com/" # http://www.zbjuran.com'
-        # self.modules = ["zipai", "xinggan", "mm", "hot"]
-        self.modules = ["zipai"]
+        self.urlHome = "http://www.mzitu.com/"
+        self.modules = ["zipai", "jiepai"]
         self.dirHome = os.getcwd()
 
     def __makeDir(self, path):
@@ -19,11 +18,13 @@ class Mzitu():
             os.makedirs(path)
 
     def __saveImage(self, imgHref, imgName):
-        img = requests.get(imgHref, headers=self.headers)
-        # self.driver.get(imgHref)
-        f = open(imgName, 'wb')
-        f.write(img.content)
-        f.close()
+        try:
+            img = requests.get(imgHref, headers=self.headers)
+            f = open(imgName, 'wb')
+            f.write(img.content)
+            f.close()
+        except:
+            print("saved image failed %s" %(imgHref))
 
     def __saveImages(self, imgHrefList):
         def saveThread(imgHrefList, fileList):
@@ -34,20 +35,15 @@ class Mzitu():
 
         threadList = []
         fileList = os.listdir('.')
-        hrefListSize = len(imgHrefList)
-        if hrefListSize < 4:
-            thread1 = threading.Thread(target=saveThread, args=(imgHrefList, fileList))
-            threadList.append(thread1)
-        else:
-            hrefThreadSize = int(hrefListSize/4)
-            thread2 = threading.Thread(target=saveThread, args=(imgHrefList[0*hrefThreadSize:1*hrefThreadSize], fileList))
-            thread3 = threading.Thread(target=saveThread, args=(imgHrefList[1*hrefThreadSize:2*hrefThreadSize], fileList))
-            thread4 = threading.Thread(target=saveThread, args=(imgHrefList[2*hrefThreadSize:3*hrefThreadSize], fileList))
-            thread5 = threading.Thread(target=saveThread, args=(imgHrefList[3*hrefThreadSize:], fileList))
-            threadList.append(thread2)
-            threadList.append(thread3)
-            threadList.append(thread4)
-            threadList.append(thread5)
+        hrefThreadSize = int(len(imgHrefList)/4)
+        thread1 = threading.Thread(target=saveThread, args=(imgHrefList[0*hrefThreadSize:1*hrefThreadSize], fileList))
+        thread2 = threading.Thread(target=saveThread, args=(imgHrefList[1*hrefThreadSize:2*hrefThreadSize], fileList))
+        thread3 = threading.Thread(target=saveThread, args=(imgHrefList[2*hrefThreadSize:3*hrefThreadSize], fileList))
+        thread4 = threading.Thread(target=saveThread, args=(imgHrefList[3*hrefThreadSize:], fileList))
+        threadList.append(thread1)
+        threadList.append(thread2)
+        threadList.append(thread3)
+        threadList.append(thread4)
 
         for thread in threadList:
             thread.start()
@@ -65,7 +61,7 @@ class Mzitu():
         for module in self.modules:
             self.__makeDir(module)
             os.chdir(module)
-            
+
             imgHrefList = []
             countBefore = len(os.listdir('.'))
 
@@ -84,5 +80,5 @@ class Mzitu():
 
             countAfter = len(os.listdir('.'))
             print("saved %d images in dir:%s" %(countAfter-countBefore, module))
-
             os.chdir("..")
+
